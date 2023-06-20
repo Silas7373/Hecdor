@@ -1,43 +1,50 @@
-import asyncio
-import websockets
+import threading
+import socket
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-async def on_connect(websocket):
+def on_connect(websocket):
     print("Connection established")
 
-async def on_disconnect(websocket):
+def on_disconnect(websocket):
     print("Connection closed")
 
-async def on_receive(message):
-    print("Received message:", message)
+def on_receive(message):
+    print(f"Received message: '{message.decode()}'")
 
-async def receive_messages(websocket):
-    async for msg in websocket:
-        print(msg)
-
-async def main():
-
-    async with websockets.connect("ws://10.10.1.218:5000/chat") as websocket:
-        
-        await on_connect(websocket)
-        
-        receive_task = asyncio.ensure_future(receive_messages(websocket))
-       
+def receive_messages(websocket):
+    try:
         while True:
-            user_input = input("Enter a message to send (or 'quit' to exit): ")
+            message = websocket.recv(1024)
+            if not message:
+                websocket.close()
+                exit()
+            on_receive(message)
+    except:
+        websocket.close()
 
-            if user_input == "quit":
-                break
+def send_messages(websocket):
+    while True:
+        message = input()
+        if message == "exit" or message == "":
+            websocket.close()
+            return
+        
+        websocket.sendall(message.encode())
 
-            await websocket.send(user_input)
-            _ = await websocket.recv()
+def main():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as ws:
+        ws.connect((input("Server IP: "), int(os.getenv("SELF_PORT"))))
 
-        receive_task.cancel()
-        try:
-            await receive_task
-        except asyncio.CancelledError:
-            pass
+        print("connected")
+        
+        on_connect(ws)
+        
+        thread = threading.Thread(target=receive_messages, args=(ws,))
+        thread.start()
 
-        await on_disconnect(websocket)
+        send_messages(ws)
 
-
-asyncio.get_event_loop().run_until_complete(main())
+if __name__ == "__main__":
+    main()
