@@ -35,7 +35,7 @@ def send_messages(websocket):
 
 def main():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as ws:
-        ws.connect((input("Server IP: "), int(os.getenv("SELF_PORT"))))
+        ws.connect((input("Server IP: "), int(os.getenv("SERVER_PORT"))))
 
         print("connected")
         
